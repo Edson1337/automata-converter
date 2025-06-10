@@ -99,7 +99,7 @@ class Converter:
     def convert_afn_to_afd(self, afn: AFN) -> AFD:
         """
         Converte um AFN em um AFD usando o algoritmo de determinização,
-        com visualização de tabela para ajudar no debug.
+        garantindo que o AFD seja completo com estado sumidouro.
         """
         # Calcular o estado inicial do AFD
         initial_closure = self.epsilon_closure({afn.q0}, afn)
@@ -108,6 +108,10 @@ class Converter:
         states_afd = {initial_afd}
         queue = deque([initial_afd])
         delta_afd = {}
+        
+        # Estado sumidouro (sink state) - conjunto vazio
+        SINK_STATE = frozenset()
+        sink_needed = False
         
         # Tabela para visualização
         print("\n# Tabela de Determinização:")
@@ -120,7 +124,10 @@ class Converter:
             current_state = queue.popleft()
             
             # Linha da tabela
-            current_str = "{" + ",".join(sorted(current_state)) + "}"
+            if current_state == SINK_STATE:
+                current_str = "∅"
+            else:
+                current_str = "{" + ",".join(sorted(current_state)) + "}"
             row = f"| {current_str} "
             
             for symbol in sorted(afn.Sigma):
@@ -128,12 +135,18 @@ class Converter:
                 direct_states = self.transition(afn, current_state, symbol)
                 
                 if not direct_states:
+                    # Transição indefinida - vai para estado sumidouro
+                    next_state = SINK_STATE
+                    sink_needed = True
                     row += "| ∅ "
-                    continue
-                
-                # Aplicar ε-closure
-                next_closure = self.epsilon_closure(direct_states, afn)
-                next_state = frozenset(next_closure)
+                else:
+                    # Aplicar ε-closure
+                    next_closure = self.epsilon_closure(direct_states, afn)
+                    next_state = frozenset(next_closure)
+                    
+                    # Para a tabela
+                    next_str = "{" + ",".join(sorted(next_state)) + "}"
+                    row += f"| {next_str} "
                 
                 # Adicionar transição
                 delta_afd[(current_state, symbol)] = next_state
@@ -142,15 +155,28 @@ class Converter:
                 if next_state not in states_afd:
                     states_afd.add(next_state)
                     queue.append(next_state)
-                
-                # Para a tabela
-                next_str = "{" + ",".join(sorted(next_state)) + "}"
-                row += f"| {next_str} "
             
             print(row + "|")
         
-        # Determinar estados finais
-        finals_afd = {state for state in states_afd if any(q in afn.F for q in state)}
+        # Se o estado sumidouro foi usado, adicionar suas transições
+        if sink_needed:
+            print("| ∅ ", end="")
+            for symbol in sorted(afn.Sigma):
+                delta_afd[(SINK_STATE, symbol)] = SINK_STATE
+                print("| ∅ ", end="")
+            print("|")
+            
+            # Garantir que o estado sumidouro está nos estados
+            states_afd.add(SINK_STATE)
+        
+        # Determinar estados finais (estado sumidouro nunca é final)
+        finals_afd = {state for state in states_afd 
+                    if state != SINK_STATE and any(q in afn.F for q in state)}
+        
+        print(f"\n# Estados finais identificados: {len(finals_afd)}")
+        for final in finals_afd:
+            final_str = "{" + ",".join(sorted(final)) + "}"
+            print(f"  {final_str}")
         
         return AFD(
             Q=states_afd,
