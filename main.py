@@ -9,7 +9,7 @@ from utils.cli import CLI
 grammar_file_path = './grammar/glud.txt'
 
 def main():
-
+    # Verificar se o usuário solicitou ajuda
     if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help', 'help']:
         CLI.display_help()
         return
@@ -54,6 +54,12 @@ def main():
         FileOperations.write_afd_to_file(afd_complement, complement_path, "# AFD Complemento")
         FileOperations.write_afd_to_file(afd_reverse, reverse_path, "# AFD Reverso")
         
+        print(f"\nArquivos salvos:")
+        print(f"- AFN original: {afn_path}")
+        print(f"- AFD original: {afd_path}")
+        print(f"- AFD complemento: {complement_path}")
+        print(f"- AFD reverso: {reverse_path}")
+        
         # Simulação da cadeia
         CLI.display_simulation_header()
         
@@ -63,9 +69,9 @@ def main():
         print(f"\nSimulando no AFD original:")
         is_accepted = afd.simulate(input_string, verbose=True)
         
-        # Resultado final
+        # Resultado final - APENAS UMA CHAMADA
         CLI.display_final_result(input_string, is_accepted)
-        
+
     except ValueError as e:
         print(f"Erro ao ler a gramática: {e}")
     except FileNotFoundError:
